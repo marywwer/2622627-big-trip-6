@@ -19,6 +19,7 @@
   "devDependencies": {
     "eslint": "8.38.0",
     "eslint-config-htmlacademy": "9.0.0",
+    "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^5.2.3"
   },
   "engines": {
@@ -29,8 +30,8 @@
     "@babel/preset-env": "^7.21.4",
     "babel-loader": "^9.1.2",
     "copy-webpack-plugin": "^11.0.0",
+    "dayjs": "^1.11.10",
     "html-webpack-plugin": "^5.5.1",
-    "webpack": "^5.79.0",
-    "webpack-cli": "^5.0.1"
+    "webpack": "^5.79.0"
   }
 }
