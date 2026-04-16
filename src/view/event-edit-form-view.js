@@ -1,4 +1,4 @@
-import AbstractView from '../framework/view/abstract-view.js';
+import AbstractStatefulView from '../framework/view/abstract-stateful-view.js';
 import { upperFirst, formatEventDate } from '../utils.js';
 import { EVENT_TYPES } from '../const.js';
 
@@ -39,6 +39,8 @@ const createTimeBlock = (dateFrom, dateTo) => `
       type="text"
       name="event-start-time"
       value="${formatEventDate(dateFrom)}"
+      autocomplete="off"
+      autocorrect="off"
     >
     &mdash;
     <label class="visually-hidden" for="event-end-time-1">To</label>
@@ -48,6 +50,8 @@ const createTimeBlock = (dateFrom, dateTo) => `
       type="text"
       name="event-end-time"
       value="${formatEventDate(dateTo)}"
+      autocomplete="off"
+      autocorrect="off"
     >
   </div>
 `;
@@ -71,7 +75,7 @@ const createOfferItem = (offer, isChecked = false) => `
 `;
 
 const createOffersSection = (offers = [], selectedOffers = []) => {
-  if (!offers || offers.length === 0) {
+  if (!offers.length) {
     return '';
   }
 
@@ -130,24 +134,29 @@ const createDestinationsList = (allDestinations = [], currentDestinationName) =>
 `;
 };
 
-const createEventEditFormTemplate = (data = {}) => {
-  const {
-    point = {},
-    destination = null,
-    allDestinations = [],
-    offers = []
-  } = data;
+const getDestinationById = (allDestinations, destinationId) =>
+  allDestinations.find((item) => item.id === destinationId) || null;
 
+const getDestinationByName = (allDestinations, destinationName) =>
+  allDestinations.find((item) => item.name === destinationName) || null;
+
+const getOffersByType = (allOffers, type) =>
+  allOffers.find((item) => item.type === type)?.offers || [];
+
+const createEventEditFormTemplate = (state = {}, allDestinations = [], allOffers = []) => {
   const {
     type = 'flight',
     basePrice = '',
     dateFrom = null,
     dateTo = null,
-    offers: selectedOffers = []
-  } = point;
+    offers: selectedOffers = [],
+    destination: destinationId = null
+  } = state;
 
+  const destination = getDestinationById(allDestinations, destinationId);
   const destinationName = destination ? destination.name : '';
-  const typeIcon = type ? type.toLowerCase() : 'flight';
+  const typeIcon = type.toLowerCase();
+  const currentOffers = getOffersByType(allOffers, type);
 
   return `
   <li class="trip-events__item">
@@ -186,6 +195,8 @@ const createEventEditFormTemplate = (data = {}) => {
             name="event-destination"
             value="${destinationName}"
             list="destination-list-1"
+            autocomplete="off"
+            autocorrect="off"
           >
           ${createDestinationsList(allDestinations, destinationName)}
         </div>
@@ -203,6 +214,8 @@ const createEventEditFormTemplate = (data = {}) => {
             type="text"
             name="event-price"
             value="${basePrice}"
+            autocomplete="off"
+            autocorrect="off"
           >
         </div>
 
@@ -221,7 +234,7 @@ const createEventEditFormTemplate = (data = {}) => {
       </header>
 
       <section class="event__details">
-        ${createOffersSection(offers?.offers, selectedOffers)}
+        ${createOffersSection(currentOffers, selectedOffers)}
         ${createDestinationSection(destination)}
       </section>
     </form>
@@ -229,30 +242,38 @@ const createEventEditFormTemplate = (data = {}) => {
 `;
 };
 
-export default class EventEditFormView extends AbstractView {
-  #point = {};
-  #offers = null;
-  #destination = null;
+export default class EventEditFormView extends AbstractStatefulView {
+  #allOffers = [];
   #allDestinations = [];
   #onFormSubmit = null;
   #onRollupClick = null;
 
   constructor({
     point = {},
-    offers = null,
-    destination = null,
+    offers = [],
     allDestinations = [],
     onFormSubmit = null,
     onRollupClick = null
   } = {}) {
     super();
-    this.#point = point;
-    this.#offers = offers;
-    this.#destination = destination;
+
+    this.#allOffers = offers;
     this.#allDestinations = allDestinations;
     this.#onFormSubmit = onFormSubmit;
     this.#onRollupClick = onRollupClick;
 
+    this._setState({
+      ...point
+    });
+
+    this._restoreHandlers();
+  }
+
+  get template() {
+    return createEventEditFormTemplate(this._state, this.#allDestinations, this.#allOffers);
+  }
+
+  _restoreHandlers() {
     this.element
       .querySelector('form')
       .addEventListener('submit', this.#formSubmitHandler);
@@ -260,20 +281,43 @@ export default class EventEditFormView extends AbstractView {
     this.element
       .querySelector('.event__rollup-btn')
       .addEventListener('click', this.#rollupClickHandler);
+
+    this.element
+      .querySelectorAll('.event__type-input')
+      .forEach((item) => item.addEventListener('change', this.#typeChangeHandler));
+
+    this.element
+      .querySelector('.event__input--destination')
+      .addEventListener('change', this.#destinationChangeHandler);
   }
 
-  get template() {
-    return createEventEditFormTemplate({
-      point: this.#point,
-      destination: this.#destination,
-      allDestinations: this.#allDestinations,
-      offers: this.#offers
+  #typeChangeHandler = (evt) => {
+    evt.preventDefault();
+
+    this.updateElement({
+      type: evt.target.value,
+      offers: []
     });
-  }
+  };
+
+  #destinationChangeHandler = (evt) => {
+    evt.preventDefault();
+
+    const selectedDestination = getDestinationByName(this.#allDestinations, evt.target.value);
+
+    if (!selectedDestination) {
+      return;
+    }
+
+    this.updateElement({
+      destination: selectedDestination.id
+    });
+  };
+
 
   #formSubmitHandler = (evt) => {
     evt.preventDefault();
-    this.#onFormSubmit?.();
+    this.#onFormSubmit?.(this._state);
   };
 
   #rollupClickHandler = (evt) => {
