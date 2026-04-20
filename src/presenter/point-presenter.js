@@ -77,19 +77,21 @@ export default class PointPresenter {
   }
 
   #createEditFormComponent() {
-    const destination = this.#pointsModel.getDestinationsById(this.#point.destination);
-    const offersByType = this.#pointsModel.getOffersByType(this.#point.type);
     const allDestinations = this.#pointsModel.getDestinations();
+    const allOffers = this.#pointsModel.getOffers();
 
     return new EventEditFormView({
       point: this.#point,
-      offers: offersByType,
-      destination,
+      offers: allOffers,
       allDestinations,
-      onFormSubmit: this.#replaceEditFormToPoint,
+      onFormSubmit: this.#handleFormSubmit,
       onRollupClick: this.#replaceEditFormToPoint
     });
   }
+
+  #handleFormSubmit = (updatedPoint) => {
+    this.#onDataChange(updatedPoint);
+  };
 
   #replacePointToEditForm = () => {
     this.#onModeChange();
