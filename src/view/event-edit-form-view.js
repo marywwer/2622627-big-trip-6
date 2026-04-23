@@ -288,9 +288,9 @@ export default class EventEditFormView extends AbstractStatefulView {
       .addEventListener('click', this.#rollupClickHandler);
 
     this.element
-    .querySelectorAll('.event__offer-checkbox')
-    .forEach((item) =>
-      item.addEventListener('change', this.#offerChangeHandler));
+      .querySelectorAll('.event__offer-checkbox')
+      .forEach((item) =>
+        item.addEventListener('change', this.#offerChangeHandler));
 
     this.element
       .querySelectorAll('.event__type-input')
