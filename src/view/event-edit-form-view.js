@@ -1,4 +1,6 @@
 import AbstractStatefulView from '../framework/view/abstract-stateful-view.js';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.min.css';
 import { upperFirst, formatEventDate } from '../utils.js';
 import { EVENT_TYPES } from '../const.js';
 
@@ -248,6 +250,9 @@ export default class EventEditFormView extends AbstractStatefulView {
   #onFormSubmit = null;
   #onRollupClick = null;
 
+  #startDatepicker = null;
+  #endDatepicker = null;
+
   constructor({
     point = {},
     offers = [],
@@ -283,13 +288,80 @@ export default class EventEditFormView extends AbstractStatefulView {
       .addEventListener('click', this.#rollupClickHandler);
 
     this.element
+      .querySelectorAll('.event__offer-checkbox')
+      .forEach((item) =>
+        item.addEventListener('change', this.#offerChangeHandler));
+
+    this.element
       .querySelectorAll('.event__type-input')
       .forEach((item) => item.addEventListener('change', this.#typeChangeHandler));
 
     this.element
       .querySelector('.event__input--destination')
       .addEventListener('change', this.#destinationChangeHandler);
+
+    this.#setDatepickers();
   }
+
+  #setDatepickers() {
+    const startInput = this.element.querySelector('#event-start-time-1');
+    const endInput = this.element.querySelector('#event-end-time-1');
+
+    if (this.#startDatepicker) {
+      this.#startDatepicker.destroy();
+    }
+
+    if (this.#endDatepicker) {
+      this.#endDatepicker.destroy();
+    }
+
+    this.#startDatepicker = flatpickr(startInput, {
+      enableTime: true,
+      dateFormat: 'd/m/y H:i',
+      defaultDate: this._state.dateFrom,
+
+      onChange: ([selectedDate]) => {
+        this._state.dateFrom = selectedDate;
+
+        this.#endDatepicker.set('minDate', selectedDate);
+      }
+    });
+
+    this.#endDatepicker = flatpickr(endInput, {
+      enableTime: true,
+      dateFormat: 'd/m/y H:i',
+      defaultDate: this._state.dateTo,
+
+      onChange: ([selectedDate]) => {
+        this._state.dateTo = selectedDate;
+
+        if (selectedDate < this._state.dateFrom) {
+          this.#endDatepicker.setDate(this._state.dateFrom);
+          this._state.dateTo = this._state.dateFrom;
+        }
+      }
+    });
+
+    if (this._state.dateFrom) {
+      this.#endDatepicker.set('minDate', this._state.dateFrom);
+    }
+  }
+
+  #offerChangeHandler = (evt) => {
+    const offerId = evt.target.value;
+
+    let updatedOffers = [...this._state.offers];
+
+    if (evt.target.checked) {
+      updatedOffers.push(offerId);
+    } else {
+      updatedOffers = updatedOffers.filter((id) => id !== offerId);
+    }
+
+    this.updateElement({
+      offers: updatedOffers
+    });
+  };
 
   #typeChangeHandler = (evt) => {
     evt.preventDefault();
